@@ -1,8 +1,8 @@
-# Commodity Portfolio Dashboard
+# Live Crypto Portfolio Dashboard
 
-An interactive **position, P&L, exposure and allocation** dashboard for a book of
-commodity trades — built entirely client-side with **hand-drawn SVG charts** (no
-chart library, no backend).
+A **real-time** crypto portfolio dashboard powered by the public **CoinGecko API** —
+live prices, 24h P&L, allocation and a 7-day value curve, with **editable holdings**.
+Built entirely client-side with **hand-drawn SVG charts** (no chart library, no backend).
 
 **Live:** https://sadiqk2.github.io/portfolio-dashboard
 
@@ -10,24 +10,33 @@ chart library, no backend).
 
 ## Highlights
 
-- **KPI tiles** — market value (with trend sparkline), unrealized P&L, open positions, net exposure.
-- **Portfolio value** — 30-day area chart with a hover crosshair + tooltip and an emphasized endpoint.
-- **Unrealized P&L by product** — diverging bars (gain right / loss left).
-- **Allocation** — donut with direct labels, legend, and per-segment hover.
-- **Positions table** — sortable columns, colored P&L, status pills, and **CSV export**.
-- **Filters** — product, side, status, counterparty search — every view recomputes live.
-- Light **and** dark themes; responsive; keyboard-focusable.
+- **Live data** — prices, 24h change, market cap and 7-day sparklines fetched from CoinGecko; auto-refreshes every 60s with a visible "last updated" time.
+- **Editable holdings** — change any quantity and the whole dashboard revalues instantly; your holdings persist in `localStorage` (nothing is sent anywhere).
+- **KPI tiles** — portfolio value (with live trend sparkline), 24h P&L, best 24h mover, assets held.
+- **Portfolio value** — real 7-day curve (summed from each asset's sparkline × your quantity) with a hover crosshair + tooltip.
+- **24h change by asset** — diverging bars; **allocation** donut with direct labels; sortable holdings table with coin logos.
+- Light **and** dark themes; responsive; `prefers-reduced-motion` respected.
+
+## How the real-time part works
+
+GitHub Pages is static, so the browser calls CoinGecko directly. That API is
+**keyless and CORS-enabled** (`access-control-allow-origin: *`), so a static site can
+fetch it with no server and no secret:
+
+```
+GET https://api.coingecko.com/api/v3/coins/markets
+      ?vs_currency=eur&ids=bitcoin,ethereum,…&sparkline=true&price_change_percentage=24h
+```
+
+If the API rate-limits (HTTP 429 on the free tier), the dashboard keeps the last
+good data and shows a clear status message.
 
 ## Design notes
 
-The chart colors follow a **CVD-safe categorical palette** validated against a
-colorblindness + contrast checker (fixed hue order, ≥12 ΔE target; donut segments
-carry direct labels and 2px gaps as the secondary encoding). Diverging P&L uses a
-blue↔red pair with a neutral zero axis; status (good/critical) is a reserved palette
-never reused for series color.
-
-All data is **illustrative and generated deterministically in the browser** (seeded
-PRNG) — these are not real trading positions.
+Chart colors follow a **CVD-safe categorical palette** validated against a
+colorblindness + contrast checker (fixed hue order; donut segments carry direct
+labels and 2px gaps as secondary encoding). Diverging 24h P&L uses a blue↔red pair
+with a neutral zero axis; status green/red is reserved for gain/loss text only.
 
 ## Run locally
 
