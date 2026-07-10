@@ -1,42 +1,39 @@
-# Live Crypto Portfolio Dashboard
+# Live Markets Dashboard
 
-A **real-time** crypto portfolio dashboard powered by the public **CoinGecko API** —
-live prices, 24h P&L, allocation and a 7-day value curve, with **editable holdings**.
-Built entirely client-side with **hand-drawn SVG charts** (no chart library, no backend).
+A **real-time, multi-asset** dashboard powered entirely by **public, keyless APIs** —
+a crypto portfolio, live FX rates, and precious-metals spot. Built client-side with
+**hand-drawn SVG charts** (no chart library, no backend, no API keys).
 
 **Live:** https://sadiqk2.github.io/portfolio-dashboard
 
 ![dashboard](docs/preview.png)
 
-## Highlights
+## Two views
 
-- **Live data** — prices, 24h change, market cap and 7-day sparklines fetched from CoinGecko; auto-refreshes every 60s with a visible "last updated" time.
-- **Editable holdings** — change any quantity and the whole dashboard revalues instantly; your holdings persist in `localStorage` (nothing is sent anywhere).
-- **KPI tiles** — portfolio value (with live trend sparkline), 24h P&L, best 24h mover, assets held.
-- **Portfolio value** — real 7-day curve (summed from each asset's sparkline × your quantity) with a hover crosshair + tooltip.
-- **24h change by asset** — diverging bars; **allocation** donut with direct labels; sortable holdings table with coin logos.
-- Light **and** dark themes; responsive; `prefers-reduced-motion` respected.
+**Crypto Portfolio** — live prices, 24h change, market cap and 7-day sparklines from
+[CoinGecko](https://www.coingecko.com/en/api):
+- KPI tiles (value + live sparkline, 24h P&L, best mover, assets held)
+- 7-day portfolio-value curve (summed from each asset's sparkline × your quantity), 24h-change diverging bars, allocation donut, sortable holdings table
+- **Editable holdings** (persisted to `localStorage`), **currency switch** (EUR / USD / GBP / JPY), and **add/remove assets** (track up to 8), 60s auto-refresh
 
-## How the real-time part works
+**FX & Metals** — live foreign-exchange and metals:
+- ECB reference rates via [Frankfurter](https://frankfurter.dev) with a selectable base currency and a **30-day trend chart** for any pair (real history endpoint)
+- **Gold & silver spot** via [gold-api](https://gold-api.com), converted into your base currency using the live FX rates
 
-GitHub Pages is static, so the browser calls CoinGecko directly. That API is
-**keyless and CORS-enabled** (`access-control-allow-origin: *`), so a static site can
-fetch it with no server and no secret:
+## Why these sources
 
-```
-GET https://api.coingecko.com/api/v3/coins/markets
-      ?vs_currency=eur&ids=bitcoin,ethereum,…&sparkline=true&price_change_percentage=24h
-```
-
-If the API rate-limits (HTTP 429 on the free tier), the dashboard keeps the last
-good data and shows a clear status message.
+GitHub Pages is static, so the browser calls each API directly — which means every
+source must be **keyless and CORS-enabled** (`access-control-allow-origin: *`).
+CoinGecko, Frankfurter/ECB and gold-api all qualify. (There's no keyless *commodity*
+API beyond gold/silver, and metals have no public history, so metals are spot-only.)
+On a rate-limit the UI keeps the last good data and shows a clear status.
 
 ## Design notes
 
-Chart colors follow a **CVD-safe categorical palette** validated against a
-colorblindness + contrast checker (fixed hue order; donut segments carry direct
-labels and 2px gaps as secondary encoding). Diverging 24h P&L uses a blue↔red pair
-with a neutral zero axis; status green/red is reserved for gain/loss text only.
+Chart colors follow a **CVD-safe categorical palette** validated with a colorblindness
++ contrast checker (fixed hue order; donut segments carry direct labels and 2px gaps).
+Diverging P&L uses a blue↔red pair with a neutral zero axis; green/red is reserved for
+gain/loss text. Light and dark themes; `prefers-reduced-motion` respected.
 
 ## Run locally
 
