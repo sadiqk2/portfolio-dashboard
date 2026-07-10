@@ -118,7 +118,7 @@
     .coingrid label.dis{opacity:.4;cursor:not-allowed}
 
     /* metals */
-    .metals{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+    .metals{display:flex;flex-direction:column;gap:16px}
     .metal{display:flex;align-items:center;gap:14px}
     .metal .mi{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:1.3rem;flex:none}
     .metal .mg{background:radial-gradient(circle at 35% 30%,#ffe9a8,#d4a017)}
@@ -236,7 +236,7 @@
     </div>
 
     <footer>
-      <span>Live data via <a href="https://www.coingecko.com/en/api" target="_blank" rel="noopener">CoinGecko</a>, <a href="https://frankfurter.dev" target="_blank" rel="noopener">Frankfurter/ECB</a> &amp; <a href="https://gold-api.com" target="_blank" rel="noopener">gold-api</a>. Illustrative holdings — not financial advice.</span>
+      <span>Live data via <a href="https://www.coingecko.com/en/api" target="_blank" rel="noopener">CoinGecko</a> (crypto &amp; metals) &amp; <a href="https://frankfurter.dev" target="_blank" rel="noopener">Frankfurter/ECB</a> (FX). Illustrative holdings — not financial advice.</span>
       <span><a href="https://sadiqk2.github.io">← portfolio</a> · <a href="https://github.com/sadiqk2/portfolio-dashboard" target="_blank" rel="noopener">source ↗</a></span>
     </footer>
   </div>
@@ -377,44 +377,42 @@
   async function fxRefresh(){
     $("#fStatus").innerHTML="Fetching rates…";
     try{
-      const syms=FX_TARGETS[fxBase].concat(fxBase==="USD"?[]:["USD"]).join(",");
-      const [latest,goldR] = await Promise.all([
+      const syms=FX_TARGETS[fxBase].join(",");
+      const [latest,metalsR] = await Promise.all([
         fetch(`https://api.frankfurter.dev/v1/latest?base=${fxBase}&symbols=${syms}`).then(r=>{if(!r.ok)throw new Error("FX HTTP "+r.status);return r.json();}),
-        fetchMetals()
+        fetchMetals(fxBase)
       ]);
       fxRates=latest.rates||{};
       $("#fStatus").innerHTML=`<b>Updated</b> ${new Date().toLocaleTimeString()} · ECB ${latest.date} · metals live`;
       renderRates(latest);
-      renderMetals(goldR);
+      renderMetals(metalsR);
       populateTargets();
       fxTrend();
     }catch(e){ $("#fStatus").innerHTML=`<span class="err">Couldn't load rates: ${e.message}</span>`; }
   }
-  async function fetchMetals(){
+  async function fetchMetals(base){
     try{
-      const [g,s]=await Promise.all([
-        fetch("https://api.gold-api.com/price/XAU").then(r=>r.json()),
-        fetch("https://api.gold-api.com/price/XAG").then(r=>r.json())
-      ]);
-      return {gold:g.price,silver:s.price};
+      const url=`https://api.coingecko.com/api/v3/coins/markets?vs_currency=${base.toLowerCase()}&ids=tether-gold,kinesis-silver&sparkline=true&price_change_percentage=24h`;
+      const data=await fetch(url,{headers:{accept:"application/json"}}).then(r=>{if(!r.ok)throw 0;return r.json();});
+      const pick=id=>data.find(x=>x.id===id)||{};
+      const one=(m,name,sym,cls,emoji)=>({name,sym,cls,emoji,price:m.current_price,ch:m.price_change_percentage_24h||0,spark:(m.sparkline_in_7d&&m.sparkline_in_7d.price)||[]});
+      return [one(pick("tether-gold"),"Gold","XAU","mg","🥇"),one(pick("kinesis-silver"),"Silver","XAG","ms","🥈")];
     }catch(e){return null;}
-  }
-  function baseFactor(){ // multiply a USD price to get base-currency price
-    if(fxBase==="USD")return 1;
-    const usdPerBase=fxRates.USD; // 1 base = usdPerBase USD
-    return usdPerBase?1/usdPerBase:1;
   }
   function renderRates(latest){
     const rows=FX_TARGETS[fxBase].map(t=>[t,latest.rates[t]]).filter(x=>x[1]!=null);
     $("#ratesSub").textContent=`1 ${fxBase} equals`;
     $("#fxTable").innerHTML="<tbody>"+rows.map(([t,v])=>`<tr><td>${t}</td><td>${v.toLocaleString("en-US",{maximumFractionDigits:4})}</td></tr>`).join("")+"</tbody>";
   }
-  function renderMetals(m){
-    if(!m){$("#metals").innerHTML=`<div class="skeleton">Metals unavailable.</div>`;return;}
-    const f=baseFactor(),sy=SYM[fxBase.toLowerCase()]||(fxBase+" ");
-    $("#metalSub").textContent=`Spot per troy ounce · ${fxBase}`;
-    const cell=(cls,emoji,name,usd)=>{const v=usd*f;return `<div class="metal"><div class="mi ${cls}">${emoji}</div><div><div class="ml">${name}</div><div class="mv">${sy}${v.toLocaleString("en-US",{maximumFractionDigits:v>500?0:2})}</div></div></div>`;};
-    $("#metals").innerHTML=cell("mg","🥇","Gold (XAU)",m.gold)+cell("ms","🥈","Silver (XAG)",m.silver);
+  function renderMetals(metals){
+    if(!metals){$("#metals").innerHTML=`<div class="skeleton">Metals unavailable.</div>`;return;}
+    const sy=SYM[fxBase.toLowerCase()]||(fxBase+" ");
+    $("#metalSub").textContent=`Spot per troy ounce · 7-day trend · ${fxBase}`;
+    $("#metals").innerHTML=metals.map(m=>`<div class="metal"><div class="mi ${m.cls}">${m.emoji}</div>
+      <div style="flex:1"><div class="ml">${m.name} (${m.sym})</div>
+      <div class="mv">${m.price!=null?sy+m.price.toLocaleString("en-US",{maximumFractionDigits:m.price>500?0:2}):"—"}</div>
+      <div style="font-size:.78rem;font-weight:600;color:${m.ch>=0?"var(--good)":"var(--bad)"}">${m.ch>=0?"▲":"▼"} ${Math.abs(m.ch).toFixed(2)}% · 24h</div></div>
+      ${m.spark.length?`<div style="width:112px;flex:none">${cSpark(m.spark)}</div>`:""}</div>`).join("");
   }
   function populateTargets(){
     const sel=$("#fxTarget");const opts=FX_TARGETS[fxBase];
